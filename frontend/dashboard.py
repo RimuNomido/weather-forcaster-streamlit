@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import os
 import httpx
+import json
 
 FASTAPI_URL = os.getenv('FASTAPI_URL', 'http://localhost:8000')
 
@@ -39,36 +40,38 @@ if 'download_stats_show' not in st.session_state:
 if 'weather_data' not in st.session_state:
     st.session_state.weather_data = None
 
-def hide_cleaner_button():
-    st.session_state.current_view = None
+def switch_view(to_view=None):
+    st.session_state.current_view = to_view
     st.session_state.cleaner_show = False
-    st.session_state.cleaner_show = False
+    st.session_state.history_cleaned = False
+    st.session_state.download_stats_show = False
 
 st.title('⛅Погода')
 
 with st.container(border=True):
     st.header('Узнать погоду')
-    city = st.text_input('Введите город', on_change=hide_cleaner_button)
+    city = st.text_input('Введите город', on_change=lambda: switch_view('search'))
 
     col_left, col_mid, col_right = st.columns([6.7, 1.5, 1.27])
     with col_mid:
         if st.button('Статистика'):
-            st.session_state.current_view = 'stats'
-            st.session_state.history_cleaned = False
-            st.session_state.cleaner_show = False
+            switch_view('stats')
     with col_left:
         if st.button('Поиск'):
-            st.session_state.current_view = 'search'
-            st.session_state.history_cleaned = False
+            switch_view('search')
 
     with col_right:
         if st.button('История'):
-            st.session_state.current_view = 'history'
-            st.session_state.history_cleaned = False
+            switch_view('history')
+
+output_placeholder = st.empty()
+
+with output_placeholder.container():
 
     if st.session_state.current_view == 'stats':
         st.subheader('📊 Статистика')
-        response = httpx.get(f'{FASTAPI_URL}/stats/12345')
+        with st.spinner('Загрузка...'):
+            response = httpx.get(f'{FASTAPI_URL}/stats/12345')
         data = response.json()
 
         if data['total_queries'] == 0:
@@ -82,7 +85,7 @@ with st.container(border=True):
                 df = pd.DataFrame(top_cities)
                 chart = alt.Chart(df).mark_bar().encode(
                     x=alt.X('city:N', title='Город'),
-                    y=alt.X('count:Q', title='Количество'),
+                    y=alt.Y('count:Q', title='Количество'),
                     color=alt.Color('city', title='Всего')
                 ).properties(title='Топ городов по запросам')
                 
@@ -102,25 +105,32 @@ with st.container(border=True):
                 if st.session_state.download_stats_show is True:
                     st.download_button(label='Нажмите, чтобы скачать статистику', data = data['stats'], file_name='stats.txt')
 
-    if st.session_state.current_view == 'search':
+    elif st.session_state.current_view == 'search':
         st.subheader('🔎 Результат поиска')
         with st.container(border=True):
-            if len(city) == 0:
+            if len(city) <= 0:
                 st.write('Поле ввода не должно быть пустым')
             else:
-                with st.spinner('Загрузка...'):
-                    data = httpx.get(f'{FASTAPI_URL}/weather/{city}').json()
-                weather = data['weather']
-                data = {
-                    'user_id': 12345,
-                    'city': city,
-                    'weather': data['row']
-                }
-                httpx.post(f'{FASTAPI_URL}/history', json=data)
-                st.session_state.history_cleaned = False
-                st.success(weather)
+                try:
+                    with st.spinner('Загрузка...'):
+                        data = httpx.get(f'{FASTAPI_URL}/weather/{city}').json()
+                    weather = data['weather']
+                    data = {
+                        'user_id': 12345,
+                        'city': city,
+                        'weather': data['row']
+                    }
+                    httpx.post(f'{FASTAPI_URL}/history', json=data)
+                    st.session_state.history_cleaned = False
+                    st.success(weather)
+                except json.decoder.JSONDecodeError:
+                    st.write('Не получилось отправить запрос. Попробуйте позже.')
+                except:
+                    st.write('Произошла непредвиденная ошибка')
 
-    if st.session_state.current_view == 'history':
+
+
+    elif st.session_state.current_view == 'history':
         st.subheader('📜 История запросов')
         with st.container(border=True):
             st.session_state.history_cleaned = False
@@ -140,9 +150,8 @@ with st.container(border=True):
             if clear_history_button:
                 with st.spinner('Загрузка...'):
                     response = httpx.delete(f'{FASTAPI_URL}/history/12345')
+                switch_view()
                 st.session_state.history_cleaned = True
-                st.session_state.cleaner_show = False
-                st.session_state.current_view = None
                 st.rerun()
         
 if st.session_state.history_cleaned:
