@@ -1,0 +1,3 @@
+.env
+backend/app/data/query.db
+backend/app/data/__pycache__/
