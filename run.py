@@ -7,7 +7,7 @@ async def main():
     )
     
     frontend_process = await asyncio.create_subprocess_exec(
-        sys.executable, '-m', 'streamlit', 'run', 'frontend/dashboard.py'
+        sys.executable, '-m', 'streamlit', 'run', 'frontend/dashboard.py', '--browser.gatherUsageStats=false'
     )
 
     await asyncio.gather(
