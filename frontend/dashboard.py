@@ -48,7 +48,8 @@ with st.container(border=True):
         if len(city) == 0:
             st.write('Поле ввода не должно быть пустым')
         else:
-            data = httpx.get(f'{FASTAPI_URL}/weather/{city}').json()
+            with st.spinner('Загрузка...'):
+                data = httpx.get(f'{FASTAPI_URL}/weather/{city}').json()
             weather = data['weather']
             data = {
                 'user_id': 12345,
@@ -61,7 +62,8 @@ with st.container(border=True):
     
     if show_history_button:
         st.session_state.history_cleaned = False
-        response = httpx.get(f'{FASTAPI_URL}/history/12345')
+        with st.spinner('Загрузка...'):
+            response = httpx.get(f'{FASTAPI_URL}/history/12345')
         data = response.json()
         if data['total'] == 0:
             st.write('История запросов пуста')
@@ -72,7 +74,8 @@ with st.container(border=True):
     if st.session_state.cleaner_show:
         clear_history_button = st.button('Очистить историю')
         if clear_history_button:
-            response = httpx.delete(f'{FASTAPI_URL}/history/12345')
+            with st.spinner('Загрузка...'):
+                response = httpx.delete(f'{FASTAPI_URL}/history/12345')
             st.session_state.history_cleaned = True
             st.session_state.cleaner_show = False
             st.rerun()
