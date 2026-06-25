@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 > nul
+
 echo === Установка виртуального окружения ===
 python -m venv .venv
 call .venv\Scripts\activate
