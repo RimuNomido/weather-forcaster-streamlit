@@ -4,6 +4,7 @@ from .forecaster import get_coords, send_request
 from .utils import parse_json, parse_to_display, display_all_history, parse_query_to_story
 from .db import get_queries, save_query, clear_queries, get_queries_count
 from dotenv import load_dotenv, find_dotenv
+from datetime import datetime, timedelta
 import json
 import os
 
@@ -17,6 +18,9 @@ if not YANDEX_ACCESS_KEY:
 
 app = FastAPI()
 
+weather_cache = {}
+CACHE_TTL = timedelta(minutes=5)
+
 class QueryData(BaseModel):
     user_id: int
     city: str
@@ -24,6 +28,13 @@ class QueryData(BaseModel):
 
 @app.get('/weather/{city}')
 async def get_weather(city: str):
+    if city in weather_cache:
+        cached_time, cached_data = weather_cache[city]
+        if datetime.now() - cached_time < CACHE_TTL:
+            return cached_data
+        else:
+            del weather_cache[city]
+
     coords = get_coords(city)
     if coords is None:
         raise HTTPException(status_code=404, detail='Город не найден')
@@ -36,11 +47,15 @@ async def get_weather(city: str):
     if weather is None:
         raise HTTPException(status_code=500, detail='Ошибка парсинга')
     
-    return {
+    response_data = {
         'city': city,
         'weather': parse_to_display(weather, city),
         'row': data
     }
+
+    weather_cache[city] = (datetime.now(), response_data)
+    
+    return response_data
 
 @app.post('/history')
 def save_query_to_history(query_data: QueryData):

@@ -20,6 +20,10 @@ def init_db():
             )
         ''')
 
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_users_city ON queries (city);
+            ''')
+
         connection.commit()
 
 def save_query(user_id, city, weather_data):
