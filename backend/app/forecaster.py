@@ -1,4 +1,5 @@
 from geopy import Nominatim
+from .mock_data import MOCK_CITIES
 import httpx
 
 def get_coords(city, ) -> tuple[float, float] | None:
