@@ -52,4 +52,17 @@ def clear_queries(user_id):
         cursor = connection.cursor()
         cursor.execute('DELETE FROM queries WHERE user_id = ?', (user_id,))
 
+def get_top_cities(user_id, limit=3):
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        cursor.execute('''
+            SELECT city, COUNT(*) as cnt
+            FROM queries
+            WHERE user_id = ?
+            GROUP BY city
+            ORDER BY cnt DESC
+            LIMIT ?''', (user_id, limit))
+        rows = cursor.fetchall()
+        return rows
+
 init_db()

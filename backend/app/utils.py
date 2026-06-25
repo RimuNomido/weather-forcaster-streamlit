@@ -104,7 +104,7 @@ class WeatherParser:
 
     static_emojis = {
         "date": "🗓️",
-        "city": "📍",
+        "city": "🏙️",
         "pressure": "🧭",
         "temp_c": "🌡️",
         "temp_f": "🇺🇸"
@@ -130,7 +130,7 @@ def parse_to_display(data: WeatherData, city: str) -> str:
     se = WeatherParser.static_emojis
 
     return f"""
-    {se['city']} Погода: {city}\n
+    Погода: {city} {se['city']}\n
     Облачность: {c_emoji} {c_text}\n
     Влажность: {humidity_emoji} {data.humidity}%\n
     Тип осадков: {pt_emoji} {pt_text}\n
@@ -141,15 +141,14 @@ def parse_to_display(data: WeatherData, city: str) -> str:
     Скорость ветра: {w_speed_emoji} {data.windSpeed} м/с\n
     Направление ветра: {wd_emoji} {wd_text}"""
 
-def display_all_history(answers: list[str], count_displayed, count_all):
-    consolidated_answer = 'ИСТОРИЯ ЗАПРОСОВ'.center(50, '=') + '\n'
+def display_all_history(answers: list[str], count_displayed):
+    consolidated_answer = ''
     for i in range(count_displayed):
         answer = answers[i]
         if i == count_displayed - 1:
             consolidated_answer += answer + '\n'
-            consolidated_answer += f'ОБЩЕЕ КОЛИЧЕСТВО ВСЕХ ЗАПРОСОВ: {count_all}'.center(50, '=')
             break
-        consolidated_answer += answer + "\n" + '='*50 + '\n'
+        consolidated_answer += answer + "\n"
     return consolidated_answer
 
 def parse_query_to_story(data, city, query_date):
@@ -164,3 +163,10 @@ def parse_json(json) -> WeatherData:
         return WeatherData(**weather)
     except (KeyError, TypeError):
         return None
+
+def parse_stats(total, data):
+    parsed_data = f'Всего запросов: {total}\n'
+    parsed_data += f'Чаще всего вы искали погоду в:\n'
+    for city_info in data:
+        parsed_data += f'- {city_info['city']}: {city_info['count']} раз\n'
+    return parsed_data

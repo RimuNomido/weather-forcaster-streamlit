@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from .forecaster import get_coords, send_request
-from .utils import parse_json, parse_to_display, display_all_history, parse_query_to_story
-from .db import get_queries, save_query, clear_queries, get_queries_count
+from .utils import parse_json, parse_to_display, display_all_history, parse_query_to_story, parse_stats
+from .db import get_queries, save_query, clear_queries, get_queries_count, get_top_cities
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime, timedelta
 import json
@@ -77,10 +77,22 @@ def get_history(user_id: int):
     return {
         'total': count,
         'total_to_display': queries_to_display_count,
-        'history': display_all_history(answers_data, queries_to_display_count, count)
+        'history': display_all_history(answers_data, queries_to_display_count)
     }
 
 @app.delete('/history/{user_id}')
 def delete_history(user_id: int):
     clear_queries(user_id)
     return {'status' : 'ok'}
+
+@app.get('/stats/{user_id}')
+def get_stats(user_id: int):
+    total = get_queries_count(user_id)
+    stats = get_top_cities(user_id)
+    top_cities = [{'city': city, 'count': cnt} for city, cnt in stats]
+    parsed_top_cities = parse_stats(total, top_cities)
+    return {
+        'total_queries': total,
+        'top_cities': top_cities,
+        'stats': parsed_top_cities
+    }
