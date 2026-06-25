@@ -14,12 +14,17 @@ echo === Step 3: Environment Variables ===
 set FASTAPI_URL=http://localhost:8000
 set STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 set PYTHONIOENCODING=utf-8
+set STREAMLIT_SERVER_HEADLESS=true
 
 echo === Step 4: Starting FastAPI ===
 start "FastAPI" /B uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 
 echo === Step 5: Starting Streamlit ===
 start "Streamlit" /B streamlit run frontend\dashboard.py --server.port=8501
+
+echo === Step 6: Opening Browser ===
+timeout /t 2 >nul
+start http://localhost:8501
 
 echo === App is running! ===
 echo FastAPI:   http://localhost:8000

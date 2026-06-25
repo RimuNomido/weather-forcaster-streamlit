@@ -4,6 +4,25 @@ import httpx
 
 FASTAPI_URL = os.getenv('FASTAPI_URL', 'http://localhost:8000')
 
+st.set_page_config(page_title="Погода", page_icon="⛅")  # если ещё не добавили
+
+import streamlit as st
+
+st.markdown(
+    """
+    <style>
+        .stAppDeployButton {
+            visibility: hidden;
+        }
+        [data-testid="stStatusWidget"] {
+            visibility: hidden;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
 st.title('⛅Погода')
 
 with st.container(border=True):
