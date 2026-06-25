@@ -13,6 +13,9 @@ pip install --upgrade pip
 pip install -r backend/requirements.txt
 pip install -r frontend/requirements.txt
 
+export FASTAPI_URL="http://localhost:8000"
+export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false 
+
 echo -e "${GREEN}=== Запуск FastAPI (бэкенд) ===${NC}"
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
