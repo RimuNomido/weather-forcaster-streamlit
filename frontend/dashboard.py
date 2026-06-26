@@ -80,7 +80,7 @@ if not st.session_state.sign_in_success:
         with col_sign:
             if st.button('Войти', width='content'):
                 user_id = try_to_int(user_id)
-                if not user_id is None:
+                if not user_id is None and user_id > 0:
                     st.session_state.user_id = user_id
                     st.session_state.sign_in_success = True
                     st.rerun()
