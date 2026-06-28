@@ -7,7 +7,7 @@ data_path.mkdir(parents=True, exist_ok=True)
 db_name = 'query.db'
 db_path = Path(data_path) / db_name
 
-def init_db():
+def init_db() -> None:
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
 
@@ -26,33 +26,35 @@ def init_db():
 
         connection.commit()
 
-def save_query(user_id, city, weather_data):
+init_db()
+
+def save_query(user_id: int, city: str, weather_data: dict) -> None:
     data = json.dumps(weather_data, ensure_ascii=False)
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         cursor.execute('INSERT INTO queries (user_id, city, weather_data) VALUES (?, ?, ?)', (user_id, city, data))
 
 
-def get_queries(user_id):
+def get_queries(user_id: int) -> list[tuple]:
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         cursor.execute('SELECT city, weather_data, datetime(query_date, "localtime") FROM queries WHERE user_id = ? ORDER BY query_date DESC LIMIT 10', (user_id,))
         rows = cursor.fetchall()
         return rows
     
-def get_queries_count(user_id):
+def get_queries_count(user_id: int) -> int:
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         cursor.execute('SELECT COUNT(*) FROM queries WHERE user_id = ?', (user_id,))
         total = cursor.fetchone()[0]
         return total
 
-def clear_queries(user_id):
+def clear_queries(user_id: int) -> None:
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         cursor.execute('DELETE FROM queries WHERE user_id = ?', (user_id,))
 
-def get_top_cities(user_id, limit=3):
+def get_top_cities(user_id: int, limit: int = 3) -> list[tuple[str, int]]:
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         cursor.execute('''
@@ -64,5 +66,3 @@ def get_top_cities(user_id, limit=3):
             LIMIT ?''', (user_id, limit))
         rows = cursor.fetchall()
         return rows
-
-init_db()

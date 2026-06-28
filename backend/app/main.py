@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from .forecaster import get_coords, send_request
-from .utils import parse_json, parse_to_display, display_all_history, parse_query_to_story, parse_stats
+from .utils import parse_json, display_all_history, parse_weather, parse_query_to_story, parse_stats, WeatherData
 from .db import get_queries, save_query, clear_queries, get_queries_count, get_top_cities
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime, timedelta
@@ -27,38 +27,38 @@ class QueryData(BaseModel):
     weather: dict
 
 @app.get('/weather/{city}')
-async def get_weather(city: str):
-    if city in weather_cache:
-        cached_time, cached_data = weather_cache[city]
+async def get_weather(city: str, forecast: str = 'today', part: str = 'day') -> dict:
+    if (city, forecast, part) in weather_cache:
+        cached_time, cached_data = weather_cache[(city, forecast, part)]
         if datetime.now() - cached_time < CACHE_TTL:
             return cached_data
         else:
-            del weather_cache[city]
+            del weather_cache[(city, forecast, part)]
 
     coords = get_coords(city)
     if coords is None:
         raise HTTPException(status_code=404, detail='Город не найден')
     
-    data = await send_request(YANDEX_URL, YANDEX_ACCESS_KEY, coords)
+    data = await send_request(YANDEX_URL, YANDEX_ACCESS_KEY, coords, forecast, part)
     if data is None:
         raise HTTPException(status_code=503, detail='Ошибка API')
     
-    weather = parse_json(data)
+    weather = parse_json(data, forecast, part)
     if weather is None:
         raise HTTPException(status_code=500, detail='Ошибка парсинга')
     
     response_data = {
         'city': city,
-        'weather': parse_to_display(weather, city),
-        'row': data
+        'weather': parse_weather(weather, city),
+        'row': weather
     }
 
-    weather_cache[city] = (datetime.now(), response_data)
+    weather_cache[(city, forecast, part)] = (datetime.now(), response_data)
     
     return response_data
 
 @app.post('/history')
-def save_query_to_history(query_data: QueryData):
+def save_query_to_history(query_data: QueryData) -> dict:
     save_query(query_data.user_id, query_data.city, query_data.weather)
     return {'status': 'ok'}
 
@@ -68,10 +68,9 @@ def get_history(user_id: int):
     count = get_queries_count(user_id)
     queries_to_display_count = len(queries)
     answers_data = []
-    for city, json_data, query_date in queries:
-        dict_data = json.loads(json_data)
-        weather_data = parse_json(dict_data)
-        answer = parse_query_to_story(weather_data, city, query_date)
+    for city, data_json, query_date in queries:
+        data_dict = json.loads(data_json)
+        answer = parse_query_to_story(WeatherData(**data_dict), query_date, city)
         answers_data.append(answer)
 
     return {
@@ -81,12 +80,12 @@ def get_history(user_id: int):
     }
 
 @app.delete('/history/{user_id}')
-def delete_history(user_id: int):
+def delete_history(user_id: int) -> dict:
     clear_queries(user_id)
     return {'status' : 'ok'}
 
 @app.get('/stats/{user_id}')
-def get_stats(user_id: int):
+def get_stats(user_id: int) -> dict:
     total = get_queries_count(user_id)
     stats = get_top_cities(user_id)
     top_cities = [{'city': city, 'count': cnt} for city, cnt in stats]

@@ -111,7 +111,7 @@ class WeatherParser:
     }
 
 
-def parse_to_display(data: WeatherData, city: str) -> str:
+def parse_weather(data: WeatherData, city: str, mode: str = 'display') -> dict | str:
     c_emoji = WeatherParser.cloudiness_emojis.get(data.cloudiness, "🌥️")
     c_text = WeatherParser.cloudiness_ru.get(data.cloudiness, data.cloudiness)
 
@@ -129,19 +129,31 @@ def parse_to_display(data: WeatherData, city: str) -> str:
     
     se = WeatherParser.static_emojis
 
-    return f"""
-    Погода: {city} {se['city']}\n
-    Облачность: {c_emoji} {c_text}\n
-    Влажность: {humidity_emoji} {data.humidity}%\n
-    Тип осадков: {pt_emoji} {pt_text}\n
-    Интенсивность осадков: {ps_emoji} {ps_text}\n
-    Атмосферное давление: {se['pressure']} {data.pressure} мм рт. ст.\n
-    Температура: {se['temp_c']} {data.temperature} °C\n
-    Температура по Фаренгейту: {se['temp_f']} {data.fahrenheit} °F\n
-    Скорость ветра: {w_speed_emoji} {data.windSpeed} м/с\n
-    Направление ветра: {wd_emoji} {wd_text}"""
+    if mode == 'display':
+        return {
+        'Город': f'{city} {se['city']}',
+        'Облачность': f'{c_emoji} {c_text}',
+        'Влажность': f'{humidity_emoji} {data.humidity}%',
+        'Тип осадков': f'{pt_emoji} {pt_text}',
+        'Интенсивность осадков': f'{ps_emoji} {ps_text}',
+        'Атмосферное давление': f'{se['pressure']} {data.pressure} мм рт. ст.',
+        'Температура': f'{se['temp_c']} {data.temperature} °C / {data.fahrenheit} °F',
+        'Скорость ветра': f'{w_speed_emoji} {data.windSpeed} м/с',
+        'Направление ветра': f'{wd_emoji} {wd_text}' 
+        }
+    elif mode == 'save':
+        return f"""
+        Город: {city} {se['city']}\n
+        Облачность: {c_emoji} {c_text}\n
+        Влажность: {humidity_emoji} {data.humidity}%\n
+        Тип осадков: {pt_emoji} {pt_text}\n
+        Интенсивность осадков: {ps_emoji} {ps_text}\n
+        Атмосферное давление: {se['pressure']} {data.pressure} мм рт. ст.\n
+        Температура: {se['temp_c']} {data.temperature} °C / {data.fahrenheit} °F\n
+        Скорость ветра: {w_speed_emoji} {data.windSpeed} м/с\n
+        Направление ветра: {wd_emoji} {wd_text}"""
 
-def display_all_history(answers: list[str], count_displayed):
+def display_all_history(answers: list[str], count_displayed: int) -> str:
     consolidated_answer = ''
     for i in range(count_displayed):
         answer = answers[i]
@@ -151,20 +163,27 @@ def display_all_history(answers: list[str], count_displayed):
         consolidated_answer += answer + "\n"
     return consolidated_answer
 
-def parse_query_to_story(data, city, query_date):
-    date_str = f'\n🗓️ Дата: {query_date}\n'
-    parsed_weather_data = parse_to_display(data, city)
+def parse_query_to_story(data: dict, query_date: str, city: str) -> str:
+    date_str = f'🗓️ Дата: {query_date}\n\n'
+    parsed_weather_data = parse_weather(data, city, 'save')
     parsed_query = date_str + parsed_weather_data
     return parsed_query
 
-def parse_json(json) -> WeatherData:
+def parse_json(json: dict, forecast='today', part='day') -> WeatherData | None:
     try:
-        weather = json['data']['weatherByPoint']['now']
+        if forecast == 'now':
+            weather = json['data']['weatherByPoint']['now']
+            return WeatherData(**weather)
+        if forecast == 'today':
+            day = 0
+        elif forecast == 'tomorrow':
+            day = 1
+        weather = json['data']['weatherByPoint']['forecast']['days'][day]['parts'][part]
         return WeatherData(**weather)
     except (KeyError, TypeError):
         return None
 
-def parse_stats(total, data):
+def parse_stats(total: int, data: dict) -> str:
     parsed_data = f'Всего запросов: {total}\n'
     parsed_data += f'Чаще всего вы искали погоду в:\n'
     for city_info in data:

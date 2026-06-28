@@ -6,11 +6,11 @@ coords_cache = {}
 
 http_client = httpx.AsyncClient(timeout=5, limits=httpx.Limits(max_keepalive_connections=5))
 
-def get_coords(city, ) -> tuple[float, float] | None:
+def get_coords(city: str) -> tuple[float, float] | None:
     if city in coords_cache:
         return coords_cache[city]
     
-    geolocator = Nominatim(user_agent='vladimir_safronov')
+    geolocator = Nominatim(user_agent='SafronovVE')
     loc = geolocator.geocode(city)
 
     if loc is None:
@@ -21,9 +21,10 @@ def get_coords(city, ) -> tuple[float, float] | None:
     return coords
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=3))
-async def send_request(url, access_key, coords: tuple[float, float]) -> dict | None:
+async def send_request(url: str, access_key: str, coords: tuple[float, float], forecast: str, part: str) -> dict | None:
     headers = {'X-Yandex-Weather-Key': access_key}
-    query = """
+    if forecast == 'now':
+        query = """
     query GetWeather($lat: Float!, $lon: Float!) {
         weatherByPoint(request: { lat: $lat, lon: $lon }) {
             now {
@@ -40,6 +41,31 @@ async def send_request(url, access_key, coords: tuple[float, float]) -> dict | N
         }
     }
     """
+    else:
+        query = f"""
+        query GetWeatherTomorrow($lat: Float!, $lon: Float!) {{
+        weatherByPoint(request: {{ lat: $lat, lon: $lon }}) {{
+            forecast {{
+                days(limit: 2) {{
+                    parts {{
+                        {part} {{
+                            cloudiness
+                            humidity
+                            precType
+                            precStrength
+                            pressure
+                            temperature
+                            fahrenheit: temperature(unit: FAHRENHEIT)
+                            windSpeed
+                            windDirection
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+        }}
+
+        """
     variables = {
         "lat": coords[0],
         "lon": coords[1]
