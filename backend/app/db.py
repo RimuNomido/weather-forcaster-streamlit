@@ -1,68 +1,98 @@
-from pathlib import Path
-import sqlite3
+from dotenv import load_dotenv, find_dotenv
+import functools
+import os
+import asyncpg
 import json
 
-data_path = Path(__file__).resolve().parent / 'data'
-data_path.mkdir(parents=True, exist_ok=True)
-db_name = 'query.db'
-db_path = Path(data_path) / db_name
+load_dotenv(find_dotenv())
+user = os.getenv('db_user')
+passwd = os.getenv('db_pass')
+pool = None
 
-def init_db() -> None:
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
+def handle_db_errors(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except asyncpg.UniqueViolationError:
+            print(' Ошибка: Такие данные уже существуют')
+            return None
+        except asyncpg.PostgresConnectionError:
+            print('Ошибка: Нет соединения с базой данных')
+            return None
+        except Exception as e:
+            print(f'Неизвестная ошибка: {e}')
+            return None
+    return wrapper
 
-        cursor.execute('''
+@handle_db_errors
+async def init_pool():
+    global pool
+    pool = await asyncpg.create_pool(
+    host='localhost',
+    database='queries',
+    user=user,
+    password=passwd,
+    min_size=1,
+    max_size=10
+    )
+
+@handle_db_errors
+async def init_db():
+    async with pool.acquire() as conn:
+
+        await conn.execute('''
         CREATE TABLE IF NOT EXISTS queries (
             user_id INTEGER,
             city TEXT NOT NULL,
-            weather_data JSON,
-            query_date TEXT DEFAULT CURRENT_TIMESTAMP
-            )
+            weather_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+            query_date TIMESTAMPTZ DEFAULT NOW()
+            );
         ''')
 
-        cursor.execute('''
+        await conn.execute('''
             CREATE INDEX IF NOT EXISTS idx_users_city ON queries (city);
             ''')
 
-        connection.commit()
+@handle_db_errors
+async def close_pool():
+    await pool.close()
 
-init_db()
+@handle_db_errors
+async def save_query(user_id: int, city: str, weather_data: dict) -> None:
+    async with pool.acquire() as conn:
+        data = json.dumps(weather_data, ensure_ascii=False)
+        await conn.execute('INSERT INTO queries (user_id, city, weather_data) VALUES ($1, $2, $3);', user_id, city, data)
 
-def save_query(user_id: int, city: str, weather_data: dict) -> None:
-    data = json.dumps(weather_data, ensure_ascii=False)
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute('INSERT INTO queries (user_id, city, weather_data) VALUES (?, ?, ?)', (user_id, city, data))
-
-
-def get_queries(user_id: int) -> list[tuple]:
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute('SELECT city, weather_data, datetime(query_date, "localtime") FROM queries WHERE user_id = ? ORDER BY query_date DESC LIMIT 10', (user_id,))
-        rows = cursor.fetchall()
+@handle_db_errors
+async def get_queries(user_id: int) -> list[tuple]:
+    query = 'SELECT city, weather_data, query_date FROM queries WHERE user_id = $1 ORDER BY query_date DESC LIMIT 10;'
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(query, user_id)
         return rows
     
-def get_queries_count(user_id: int) -> int:
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute('SELECT COUNT(*) FROM queries WHERE user_id = ?', (user_id,))
-        total = cursor.fetchone()[0]
+@handle_db_errors
+async def get_queries_count(user_id: int) -> int:
+    query = 'SELECT COUNT(*) FROM queries WHERE user_id = $1;'
+    async with pool.acquire() as conn:
+        total = await conn.fetchval(query, user_id)
         return total
 
-def clear_queries(user_id: int) -> None:
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute('DELETE FROM queries WHERE user_id = ?', (user_id,))
+@handle_db_errors
+async def clear_queries(user_id: int) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM queries WHERE user_id = $1;', user_id)
 
-def get_top_cities(user_id: int, limit: int = 3) -> list[tuple[str, int]]:
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute('''
+@handle_db_errors
+async def get_top_cities(user_id: int, limit: int = 3) -> list[tuple[str, int]]:
+    query = '''
             SELECT city, COUNT(*) as cnt
             FROM queries
-            WHERE user_id = ?
+            WHERE user_id = $1
             GROUP BY city
             ORDER BY cnt DESC
-            LIMIT ?''', (user_id, limit))
-        rows = cursor.fetchall()
+            LIMIT $2;
+            '''
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(query, user_id, limit)
         return rows
