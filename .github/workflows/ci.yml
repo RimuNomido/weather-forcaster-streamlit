@@ -32,6 +32,8 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
       
     - name: Test with pytest
+      env:
+        YANDEX_ACCESS_KEY: placeholder
       run: |
         pip install pytest
-        YANDEX_ACCESS_KEY=test_key pytest tests/ -v pytest tests/ -v
+        pytest tests/ -v
