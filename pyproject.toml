@@ -5,3 +5,7 @@ build-backend = 'setuptools.build_meta'
 [project]
 name = "weather-forecaster-streamlit"
 version = "0.1.0"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
