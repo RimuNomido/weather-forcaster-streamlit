@@ -1,7 +1,10 @@
+from dotenv import load_dotenv, find_dotenv
 import httpx
 import os
 
-FASTAPI_URL = os.getenv('FASTAPI_URL', 'http://localhost:8000')
+load_dotenv(find_dotenv())
+
+FASTAPI_URL = os.getenv('FASTAPI_URL')
 
 def fetch_weather(city: str, forecast: str, part: str) -> dict:
     response =  httpx.get(f'{FASTAPI_URL}/weather/{city}?forecast={forecast}&part={part}')

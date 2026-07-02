@@ -12,7 +12,7 @@ import os
 load_dotenv(find_dotenv())
 
 YANDEX_URL = 'https://api.weather.yandex.ru/graphql/query'
-YANDEX_ACCESS_KEY = os.getenv('access_key')
+YANDEX_ACCESS_KEY = os.getenv('YANDEX_ACCESS_KEY')
 
 if not YANDEX_ACCESS_KEY:
     raise ValueError('YANDEX_ACCESS KEY не найден.')

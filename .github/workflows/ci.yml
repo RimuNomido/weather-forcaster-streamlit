@@ -33,7 +33,7 @@ jobs:
       
     - name: Test with pytest
       env:
-        access_key: placeholder
+        YANDEX_ACCESS_KEY: placeholder
       run: |
         pip install pytest
         pytest tests/ -v

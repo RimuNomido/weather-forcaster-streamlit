@@ -7,6 +7,7 @@ import json
 load_dotenv(find_dotenv())
 user = os.getenv('db_user')
 passwd = os.getenv('db_pass')
+DB_HOST = os.getenv('DB_HOST', 'localhost')
 pool = None
 
 def handle_db_errors(func):
@@ -29,7 +30,7 @@ def handle_db_errors(func):
 async def init_pool():
     global pool
     pool = await asyncpg.create_pool(
-    host='localhost',
+    host=DB_HOST,
     database='queries',
     user=user,
     password=passwd,
