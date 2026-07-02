@@ -11,6 +11,7 @@ services:
       - YANDEX_ACCESS_KEY=${YANDEX_ACCESS_KEY}
       - db_user=${db_user}
       - db_pass=${db_pass}
+      - DB_HOST=postgres
     depends_on:
       - postgres
     restart: always
