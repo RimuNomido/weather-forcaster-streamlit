@@ -36,4 +36,5 @@ jobs:
         YANDEX_ACCESS_KEY: placeholder
       run: |
         pip install pytest
+        echo "YANDEX_ACCESS_KEY is: $YANDEX_ACCESS_KEY"
         pytest tests/ -v
