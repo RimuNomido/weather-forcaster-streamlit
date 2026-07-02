@@ -78,7 +78,10 @@ async def get_history(user_id: int):
     answers_data = []
     for city, data_json, query_date in queries:
         data_dict = json.loads(data_json)
-        adapted_date = query_date[:19]
+        if isinstance(query_date, datetime):
+            adapted_date = query_date.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            adapted_date = query_date[:19]
         answer = parse_query_to_story(WeatherData(**data_dict), adapted_date, city)
         answers_data.append(answer)
 
