@@ -34,4 +34,4 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        pytest tests/ -v
+        YANDEX_ACCESS_KEY=test_key pytest tests/ -v pytest tests/ -v
